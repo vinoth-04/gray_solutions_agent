@@ -1,0 +1,19 @@
+[project]
+name = "exotel-pipeline"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "asyncpg>=0.31.0",
+    "elevenlabs>=2.36.0",
+    "fastapi>=0.129.0",
+    "open-intent-classifier>=0.0.8",
+    "openai>=2.21.0",
+    "psycopg2-binary>=2.9.11",
+    "python-dotenv>=1.2.1",
+    "torch>=2.10.0",
+    "uvicorn>=0.40.0",
+    "websockets==15.0.1",
+    "pipecat-ai[deepgram,sarvam,silero]>=0.0.60",
+]

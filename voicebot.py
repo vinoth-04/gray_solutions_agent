@@ -2,7 +2,7 @@ import os
 from dotenv import load_dotenv
 from loguru import logger
 
-from pipeline.audio.vad.silero import SileroVADAnalyzer
+from pipecat.audio.vad.silero import SileroVADAnalyzer
 from pipecat.frames.frames import LLMRunFrame
 from pipecat.pipeline.pipeline import Pipeline
 from pipecat.pipeline.runner import PipelineRunner
@@ -21,6 +21,8 @@ from pipeline.services.openai.llm import OpenAILLMService
 from prompt.clinic_system_prompt import SYSTEM_PROMPT
 from pipecat.adapters.schemas.tools_schema import ToolsSchema
 
+# ⭐ IMPORT YOUR TOOL FUNCTIONS
+from database.tools import check_slot, book_slot
 
 load_dotenv()
 
@@ -38,7 +40,26 @@ async def run_bot(transport):
         ),
         retry_on_timeout=True,
     )
+    # ================= TOOLS =================
+    tools_schema = ToolsSchema(
+        standard_tools=[check_slot, book_slot]
+    )
 
+    # 1) Give schema to LLM
+    llm.tools = tools_schema
+
+    # 2) Register actual handler functions
+    llm.register_direct_function(check_slot)
+    llm.register_direct_function(book_slot)
+    # # ================= TOOLS =================
+    # tools = ToolsSchema(
+    #     standard_tools=[check_slot, book_slot]
+    # )
+
+    # # ⭐ REGISTER TOOLS IN LLM
+    # llm.tools = tools
+
+    # ================= STT =================
     stt = DeepgramSTTService(
         api_key=os.getenv("DEEPGRAM_API_KEY"),
     )
@@ -60,6 +81,7 @@ async def run_bot(transport):
 
     context = LLMContext(
         messages=messages,
+        tools=tools_schema   # ⭐ MUST BE ToolsSchema
     )
 
     user_agg, assistant_agg = LLMContextAggregatorPair(
@@ -90,6 +112,7 @@ async def run_bot(transport):
         ),
     )
 
+    # ================= EVENTS =================
     @transport.event_handler("on_client_connected")
     async def on_connected(transport, client):
         logger.info("📞 Caller connected")

@@ -36,51 +36,49 @@ from database.db import get_db
 
 #     return {"status": "success", "message": "Appointment booked"}
 
-async def check_slot(params):
+async def check_slot(params, date: str = "", time: str = ""):
     """
     Check if appointment slot is available.
 
-    params:
+    Args:
         date: appointment date
         time: appointment time
     """
+    conn = await get_db()
+    try:
+        query = """
+        SELECT * FROM appointments
+        WHERE appointment_date = $1::DATE AND appointment_time = $2::TIME
+        """
 
-    date = params["date"]
-    time = params["time"]
+        result = await conn.fetch(query, date, time)
 
-    query = """
-    SELECT * FROM appointments
-    WHERE appointment_date=$1 AND appointment_time=$2
-    """
+        if result:
+            return {"available": False}
+        else:
+            return {"available": True}
+    finally:
+        await conn.close()
 
-    result = await db.fetch(query, date, time)
-
-    if result:
-        return {"available": False}
-    else:
-        return {"available": True}
-
-async def book_slot(params):
+async def book_slot(params, name: str = "", phone: str = "", date: str = "", time: str = ""):
     """
     Book appointment slot.
 
-    params:
+    Args:
         name: patient name
         phone: phone number
         date: appointment date
         time: appointment time
     """
+    conn = await get_db()
+    try:
+        query = """
+        INSERT INTO appointments (patient_name, phone_number, appointment_date, appointment_time)
+        VALUES ($1, $2, $3::DATE, $4::TIME)
+        """
 
-    name = params["name"]
-    phone = params["phone"]
-    date = params["date"]
-    time = params["time"]
+        await conn.execute(query, name, phone, date, time)
 
-    query = """
-    INSERT INTO appointments (patient_name, phone_number, appointment_date, appointment_time)
-    VALUES ($1, $2, $3, $4)
-    """
-
-    await db.execute(query, name, phone, date, time)
-
-    return {"status": "booked"}
+        return {"status": "booked"}
+    finally:
+        await conn.close()

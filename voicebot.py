@@ -12,7 +12,7 @@ from pipecat.processors.aggregators.llm_response_universal import (
     LLMContextAggregatorPair,
     LLMUserAggregatorParams,
 )
-
+from pipecat.services.sarvam.stt import SarvamSTTService
 from pipecat.services.deepgram.stt import DeepgramSTTService
 from pipecat.services.sarvam import SarvamTTSService
 from pipecat.transcriptions.language import Language
@@ -20,12 +20,9 @@ from pipecat.transcriptions.language import Language
 from pipeline.services.openai.llm import OpenAILLMService
 from prompt.clinic_system_prompt import SYSTEM_PROMPT
 from pipecat.adapters.schemas.tools_schema import ToolsSchema
-
-# ⭐ IMPORT YOUR TOOL FUNCTIONS
 from database.tools import check_slot, book_slot
 
 load_dotenv()
-
 
 async def run_bot(transport):
 
@@ -40,49 +37,41 @@ async def run_bot(transport):
         ),
         retry_on_timeout=True,
     )
+
     # ================= TOOLS =================
     tools_schema = ToolsSchema(
         standard_tools=[check_slot, book_slot]
     )
-
-    # 1) Give schema to LLM
     llm.tools = tools_schema
-
-    # 2) Register actual handler functions
     llm.register_direct_function(check_slot)
     llm.register_direct_function(book_slot)
-    # # ================= TOOLS =================
-    # tools = ToolsSchema(
-    #     standard_tools=[check_slot, book_slot]
-    # )
 
-    # # ⭐ REGISTER TOOLS IN LLM
-    # llm.tools = tools
-
-    # ================= STT =================
-    stt = DeepgramSTTService(
-        api_key=os.getenv("DEEPGRAM_API_KEY"),
+    stt = SarvamSTTService(
+        api_key=os.getenv("SARVAM_API_KEY"),
+        model="saarika:v2.5",
+        params=SarvamSTTService.InputParams(
+            language=None,  # auto detect Tamil or any other language
+        ),
     )
 
-    # ================= TTS =================
     tts = SarvamTTSService(
         api_key=os.getenv("SARVAM_API_KEY"),
-        model="bulbul:v3-beta",
-        voice_id="shubh",
+        model="bulbul:v3",            # advanced Indian language voice
+        voice_id="shubh",             # choose one voice (male)
         params=SarvamTTSService.InputParams(
-            language=Language.EN,
-            pace=1.1,
-            temperature=0.6,
+            language=Language.TA,      # Tamil TTS output
+            pace=1.0,                  # normal speed
+            temperature=0.7,           # voice variation
         ),
     )
 
     # ================= CONTEXT =================
-    messages = [{"role": "system", "content": SYSTEM_PROMPT}]
-
-    context = LLMContext(
-        messages=messages,
-        tools=tools_schema   # ⭐ MUST BE ToolsSchema
-    )
+    messages = [{"role": "system", "content": SYSTEM_PROMPT+"""
+இந்த AI உதவியாளர் முழுமையாக தமிழ் மொழியில் பதிலளிக்க வேண்டும்.
+பயனர் பேசும்போது தமிழில் பதில்களை உருவாக்கவும் மற்றும் அத்துடன் தெளிவாகவும் நட்பு உளவும் பதிலளிக்கவும்.
+பயனர் அறிமுகம் கேட்டால் எளிதாக தமிழில் சமர்ப்பிக்கவும்.
+"""}]
+    context = LLMContext(messages=messages, tools=tools_schema)
 
     user_agg, assistant_agg = LLMContextAggregatorPair(
         context,
@@ -116,9 +105,9 @@ async def run_bot(transport):
     @transport.event_handler("on_client_connected")
     async def on_connected(transport, client):
         logger.info("📞 Caller connected")
-        messages.append(
-            {"role": "system", "content": "Please introduce yourself to the user."}
-        )
+        # messages.append(
+        #     {"role": "system", "content": "Please introduce yourself in Tamil."}
+        # )
         await task.queue_frames([LLMRunFrame()])
 
     @transport.event_handler("on_client_disconnected")

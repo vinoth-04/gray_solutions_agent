@@ -2,8 +2,6 @@ from fastapi import FastAPI, WebSocket
 from loguru import logger
 
 from pipecat.runner.utils import parse_telephony_websocket
-
-# from pipeline.serializers.exotel import ExotelFrameSerializer
 from pipecat.serializers.exotel import ExotelFrameSerializer
 from pipeline.transports.fastapi import (
     FastAPIWebsocketTransport,

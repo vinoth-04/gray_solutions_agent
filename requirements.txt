@@ -9,3 +9,5 @@ torch
 pipecat-ai[deepgram]
 asyncpg
 psycopg2-binary
+sqlalchemy
+pydantic

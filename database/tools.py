@@ -11,8 +11,14 @@ def get_tools():
                 "parameters": {
                     "type": "object",
                     "properties": {
-                        "date": {"type": "string"},
-                        "time": {"type": "string"},
+                        "date": {
+                            "type": "string",
+                            "description": "Date in format YYYY-MM-DD"
+                        },
+                        "time": {
+                            "type": "string",
+                            "description": "Time in format HH:MM (24-hour)"
+                        },
                     },
                     "required": ["date", "time"],
                 },
@@ -21,15 +27,21 @@ def get_tools():
         {
             "type": "function",
             "function": {
-                "name": "book_appointment",
-                "description": "Book an appointment",
+                "name": "book_slot",  # ✅ FIXED NAME
+                "description": "Book an appointment slot",
                 "parameters": {
                     "type": "object",
                     "properties": {
                         "name": {"type": "string"},
                         "phone": {"type": "string"},
-                        "date": {"type": "string"},
-                        "time": {"type": "string"},
+                        "date": {
+                            "type": "string",
+                            "description": "Date in format YYYY-MM-DD"
+                        },
+                        "time": {
+                            "type": "string",
+                            "description": "Time in format HH:MM (24-hour)"
+                        },
                     },
                     "required": ["name", "phone", "date", "time"],
                 },
@@ -37,11 +49,14 @@ def get_tools():
         },
     ]
 
-
-# FUNCTION HANDLER
 async def run_function(name, arguments):
+
     if name == "check_slot":
-        return await check_slot(**arguments)
+        request = CheckSlotRequest(**arguments)
+        return await check_slot(request)
 
     if name == "book_slot":
-        return await book_slot(**arguments)
+        request = BookSlotRequest(**arguments)
+        return await book_slot(request)
+
+    return {"error": f"Unknown function: {name}"}

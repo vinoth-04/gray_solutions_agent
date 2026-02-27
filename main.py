@@ -8,7 +8,7 @@ from pipeline.transports.fastapi import (
     FastAPIWebsocketParams,
 )
 
-from voicebot import run_bot
+from voice_english import run_bot
 
 app = FastAPI()
 

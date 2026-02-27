@@ -16,4 +16,6 @@ dependencies = [
     "uvicorn>=0.40.0",
     "websockets==15.0.1",
     "pipecat-ai[deepgram,sarvam,silero]>=0.0.60",
+    "sqlalchemy>=2.0.46",
+    "pydantic>=2.12.5",
 ]

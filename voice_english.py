@@ -22,7 +22,8 @@ from prompt.clinic_system_prompt import SYSTEM_PROMPT
 from pipecat.adapters.schemas.tools_schema import ToolsSchema
 
 # ⭐ IMPORT YOUR TOOL FUNCTIONS
-from database.tools import check_slot, book_slot
+# from database.tools import check_slot, book_slot
+from database.tools import check_slot, book_slot, next_available_slot
 
 load_dotenv()
 
@@ -40,26 +41,20 @@ async def run_bot(transport):
         ),
         retry_on_timeout=True,
     )
-    # ================= TOOLS =================
     tools_schema = ToolsSchema(
-        standard_tools=[check_slot, book_slot]
+        standard_tools=[
+            check_slot,
+            book_slot,
+            next_available_slot
+        ]
     )
 
-    # 1) Give schema to LLM
     llm.tools = tools_schema
 
-    # 2) Register actual handler functions
     llm.register_direct_function(check_slot)
     llm.register_direct_function(book_slot)
-    # # ================= TOOLS =================
-    # tools = ToolsSchema(
-    #     standard_tools=[check_slot, book_slot]
-    # )
-
-    # # ⭐ REGISTER TOOLS IN LLM
-    # llm.tools = tools
-
-    # ================= STT =================
+    llm.register_direct_function(next_available_slot)
+        # ================= STT =================
     stt = DeepgramSTTService(
         api_key=os.getenv("DEEPGRAM_API_KEY"),
     )

@@ -1,62 +1,57 @@
-from database.appointment_service import check_slot, book_slot
+from pipecat.services.llm_service import FunctionCallParams
+from database.db import supabase
 
 
-def get_tools():
-    return [
-        {
-            "type": "function",
-            "function": {
-                "name": "check_slot",
-                "description": "Check if appointment slot is available",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "date": {
-                            "type": "string",
-                            "description": "Date in format YYYY-MM-DD"
-                        },
-                        "time": {
-                            "type": "string",
-                            "description": "Time in format HH:MM (24-hour)"
-                        },
-                    },
-                    "required": ["date", "time"],
-                },
-            },
-        },
-        {
-            "type": "function",
-            "function": {
-                "name": "book_slot",  # ✅ FIXED NAME
-                "description": "Book an appointment slot",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "name": {"type": "string"},
-                        "phone": {"type": "string"},
-                        "date": {
-                            "type": "string",
-                            "description": "Date in format YYYY-MM-DD"
-                        },
-                        "time": {
-                            "type": "string",
-                            "description": "Time in format HH:MM (24-hour)"
-                        },
-                    },
-                    "required": ["name", "phone", "date", "time"],
-                },
-            },
-        },
-    ]
+async def check_slot(params: FunctionCallParams, date: str, time: str):
+    try:
+        response = supabase.table("appointments") \
+            .select("*") \
+            .eq("appointment_date", date) \
+            .eq("appointment_time", time) \
+            .execute()
 
-async def run_function(name, arguments):
+        is_free = len(response.data) == 0
 
-    if name == "check_slot":
-        request = CheckSlotRequest(**arguments)
-        return await check_slot(request)
+        await params.result_callback({
+            "available": is_free
+        })
 
-    if name == "book_slot":
-        request = BookSlotRequest(**arguments)
-        return await book_slot(request)
+    except Exception as e:
+        await params.result_callback({
+            "error": str(e)
+        })
 
-    return {"error": f"Unknown function: {name}"}
+
+async def book_slot(params: FunctionCallParams, name: str, phone: str, date: str, time: str):
+    try:
+        # Check first
+        response = supabase.table("appointments") \
+            .select("*") \
+            .eq("appointment_date", date) \
+            .eq("appointment_time", time) \
+            .execute()
+
+        if len(response.data) > 0:
+            await params.result_callback({
+                "status": "error",
+                "message": "Slot already booked"
+            })
+            return
+
+        # Insert
+        supabase.table("appointments").insert({
+            "name": name,
+            "phone": phone,
+            "appointment_date": date,
+            "appointment_time": time
+        }).execute()
+
+        await params.result_callback({
+            "status": "success",
+            "message": "Appointment booked successfully"
+        })
+
+    except Exception as e:
+        await params.result_callback({
+            "error": str(e)
+        })

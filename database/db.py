@@ -1,15 +1,10 @@
-# import asyncpg
+import os
+from supabase import create_client
+from dotenv import load_dotenv
 
-# # DATABASE_URL = "postgresql://postgres:password@localhost:5432/appointment_db"
-# DATABASE_URL="postgresql://postgres:%40Vinoth04@localhost:5432/clinic_calendar"
+load_dotenv()
 
-# async def get_connection():
-#     return await asyncpg.connect(DATABASE_URL)
+url = os.getenv("SUPABASE_URL")
+key = os.getenv("SUPABASE_KEY")
 
-
-import asyncpg
-
-DB_URL = "postgresql://postgres:%40Vinoth04@localhost:5432/clinic_calendar"
-
-async def get_db():
-    return await asyncpg.connect(DB_URL)
+supabase = create_client(url, key)

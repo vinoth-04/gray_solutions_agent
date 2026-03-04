@@ -18,7 +18,7 @@ from pipecat.services.sarvam import SarvamTTSService
 from pipecat.transcriptions.language import Language
 
 from pipeline.services.openai.llm import OpenAILLMService
-from prompt.clinic_system_prompt import SYSTEM_PROMPT
+from prompt.clinic_system_prompt import get_system_prompt
 from pipecat.adapters.schemas.tools_schema import ToolsSchema
 
 # ⭐ IMPORT YOUR TOOL FUNCTIONS
@@ -72,7 +72,8 @@ async def run_bot(transport):
     )
 
     # ================= CONTEXT =================
-    messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+    # Inject real-time IST date/time into the system prompt at the start of each call
+    messages = [{"role": "system", "content": get_system_prompt()}]
 
     context = LLMContext(
         messages=messages,

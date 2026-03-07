@@ -21,8 +21,7 @@ from pipeline.services.openai.llm import OpenAILLMService
 from prompt.clinic_system_prompt import get_system_prompt
 from pipecat.adapters.schemas.tools_schema import ToolsSchema
 
-# ⭐ IMPORT YOUR TOOL FUNCTIONS
-# from database.tools import check_slot, book_slot
+from database.time_utils import get_current_context 
 from database.tools import check_slot, book_slot, next_available_slot
 
 load_dotenv()
@@ -48,7 +47,7 @@ async def run_bot(transport):
             next_available_slot
         ]
     )
-
+    # time_context = get_current_context()
     llm.tools = tools_schema
 
     llm.register_direct_function(check_slot)
@@ -71,13 +70,20 @@ async def run_bot(transport):
         ),
     )
 
-    # ================= CONTEXT =================
-    # Inject real-time IST date/time into the system prompt at the start of each call
-    messages = [{"role": "system", "content": get_system_prompt()}]
+# ================= CONTEXT =================
+
+    time_context = get_current_context()
+
+    messages = [
+        {
+            "role": "system",
+            "content": get_system_prompt(time_context)
+        }
+    ]
 
     context = LLMContext(
         messages=messages,
-        tools=tools_schema   # ⭐ MUST BE ToolsSchema
+        tools=tools_schema
     )
 
     user_agg, assistant_agg = LLMContextAggregatorPair(

@@ -1,22 +1,20 @@
-from datetime import datetime, timezone, timedelta
-
-# Indian Standard Time
-IST = timezone(timedelta(hours=5, minutes=30))
-
-
-def get_system_prompt() -> str:
+def get_system_prompt(time_context: dict) -> str:
     """
-    Returns the system prompt with the CURRENT real IST date and time injected.
-    Call this once at the start of each call, not at import time.
+    Returns the system prompt using the provided time context.
     """
 
-    now = datetime.now(IST)
-    today_str = now.strftime("%Y-%m-%d")
-    day_name = now.strftime("%A")
-    time_12h = now.strftime("%I:%M %p")
+    day_name = time_context["day"]
+    today_str = time_context["date"]
+    time_12h = time_context["time_12h"]
 
     return f"""
 You are **Aria**, the AI voice assistant for **MedVoice Dental Clinic**.
+
+CURRENT DATE AND TIME
+
+Today is {day_name}, {today_str}.
+Current time is {time_12h} IST.
+
 
 Your job is to assist patients with:
 - Booking appointments

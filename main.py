@@ -42,4 +42,4 @@ async def exotel_websocket(websocket: WebSocket):
     )
 
     # Start voicebot
-    await run_bot(transport)
+    await run_bot(transport, call_id=call_data["call_id"])

@@ -1,7 +1,7 @@
 from pipecat.services.llm_service import FunctionCallParams
 from datetime import timedelta
 from database.utils import get_free_slots, get_ist_now
-from database.db import supabase
+from database.db import get_connection
 
 
 async def check_slot(params: FunctionCallParams, date: str, time: str):
@@ -12,13 +12,18 @@ async def check_slot(params: FunctionCallParams, date: str, time: str):
         time: The appointment time in HH:MM 24-hour format (e.g. 10:00 for 10 AM, 14:00 for 2 PM).
     """
     try:
-        response = supabase.table("appointments") \
-            .select("*") \
-            .eq("appointment_date", date) \
-            .eq("appointment_time", time) \
-            .execute()
+        conn = get_connection()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT * FROM appointments WHERE appointment_date = %s AND appointment_time = %s",
+                    (date, time)
+                )
+                rows = cur.fetchall()
+        finally:
+            conn.close()
 
-        if len(response.data) == 0:
+        if len(rows) == 0:
             await params.result_callback({
                 "available": True
             })
@@ -45,25 +50,32 @@ async def book_slot(params: FunctionCallParams, name: str, phone: str, date: str
         time: The appointment time in HH:MM 24-hour format (e.g. 10:00 for 10 AM, 14:00 for 2 PM).
     """
     try:
-        response = supabase.table("appointments") \
-            .select("*") \
-            .eq("appointment_date", date) \
-            .eq("appointment_time", time) \
-            .execute()
+        conn = get_connection()
+        try:
+            with conn.cursor() as cur:
+                # Check if slot is already taken
+                cur.execute(
+                    "SELECT * FROM appointments WHERE appointment_date = %s AND appointment_time = %s",
+                    (date, time)
+                )
+                rows = cur.fetchall()
 
-        if len(response.data) > 0:
-            await params.result_callback({
-                "status": "error",
-                "message": "Slot already booked"
-            })
-            return
+                if len(rows) > 0:
+                    await params.result_callback({
+                        "status": "error",
+                        "message": "Slot already booked"
+                    })
+                    return
 
-        supabase.table("appointments").insert({
-            "name": name,
-            "phone": phone,
-            "appointment_date": date,
-            "appointment_time": time
-        }).execute()
+                # Insert new appointment
+                cur.execute(
+                    """INSERT INTO appointments (name, phone, appointment_date, appointment_time)
+                       VALUES (%s, %s, %s, %s)""",
+                    (name, phone, date, time)
+                )
+                conn.commit()
+        finally:
+            conn.close()
 
         await params.result_callback({
             "status": "success",

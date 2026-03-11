@@ -1,5 +1,5 @@
 from datetime import datetime, timezone, timedelta
-from database.db import supabase
+from database.db import get_connection
 from database.slots import AVAILABLE_SLOTS
 
 # Indian Standard Time = UTC+5:30
@@ -16,12 +16,17 @@ async def get_free_slots(date: str) -> list[str]:
     Returns free appointment slots for the given date (YYYY-MM-DD).
     For today's date, past time slots are excluded based on IST current time.
     """
-    response = supabase.table("appointments") \
-        .select("appointment_time") \
-        .eq("appointment_date", date) \
-        .execute()
-
-    booked_slots = [row["appointment_time"] for row in response.data]
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT appointment_time FROM appointments WHERE appointment_date = %s",
+                (date,)
+            )
+            rows = cur.fetchall()
+            booked_slots = [str(row["appointment_time"])[:5] for row in rows]
+    finally:
+        conn.close()
 
     now_ist = get_ist_now()
     today_str = now_ist.strftime("%Y-%m-%d")

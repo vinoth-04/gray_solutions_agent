@@ -23,11 +23,13 @@ from pipecat.adapters.schemas.tools_schema import ToolsSchema
 
 from database.time_utils import get_current_context 
 from database.tools import check_slot, book_slot, next_available_slot
+from Conversation_State.intent import ConversationStateManager
 
 load_dotenv()
 
+state_manager = ConversationStateManager()
 
-async def run_bot(transport):
+async def run_bot(transport, call_id: str):
 
     # ================= LLM =================
     llm = OpenAILLMService(
@@ -117,16 +119,22 @@ async def run_bot(transport):
     # ================= EVENTS =================
     @transport.event_handler("on_client_connected")
     async def on_connected(transport, client):
-        logger.info("📞 Caller connected")
-        # messages.append(
-        #     {"role": "system", "content": "Please introduce yourself to the user."}
-        # )
+
+        logger.info(f"📞 Caller connected: {call_id}")
+
+        state_manager.create_session(call_id)
+
         await task.queue_frames([LLMRunFrame()])
 
     @transport.event_handler("on_client_disconnected")
     async def on_disconnected(transport, client):
-        logger.info("📴 Caller disconnected")
+
+        logger.info(f"📴 Caller disconnected: {call_id}")
+
+        state_manager.delete_session(call_id)
+
         await task.cancel()
 
-    runner = PipelineRunner(handle_sigint=False)
+    # ================= RUN =================
+    runner = PipelineRunner()
     await runner.run(task)

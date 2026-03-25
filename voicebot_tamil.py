@@ -12,13 +12,15 @@ from pipecat.processors.aggregators.llm_response_universal import (
     LLMContextAggregatorPair,
     LLMUserAggregatorParams,
 )
+from database.time_utils import get_current_context 
 from pipecat.services.sarvam.stt import SarvamSTTService
 from pipecat.services.deepgram.stt import DeepgramSTTService
 from pipecat.services.sarvam import SarvamTTSService
 from pipecat.transcriptions.language import Language
 
 from pipeline.services.openai.llm import OpenAILLMService
-from prompt.clinic_system_prompt import SYSTEM_PROMPT
+# from prompt.clinic_system_prompt import SYSTEM_PROMPT
+from prompt.clinic_system_prompt import get_system_prompt
 from pipecat.adapters.schemas.tools_schema import ToolsSchema
 from database.tools import check_slot, book_slot
 
@@ -64,9 +66,9 @@ async def run_bot(transport):
             temperature=0.7,           # voice variation
         ),
     )
-
+    time_context = get_current_context()
     # ================= CONTEXT =================
-    messages = [{"role": "system", "content": SYSTEM_PROMPT+"""
+    messages = [{"role": "system", "content": get_system_prompt(time_context)+"""
 இந்த AI உதவியாளர் முழுமையாக தமிழ் மொழியில் பதிலளிக்க வேண்டும்.
 பயனர் பேசும்போது தமிழில் பதில்களை உருவாக்கவும் மற்றும் அத்துடன் தெளிவாகவும் நட்பு உளவும் பதிலளிக்கவும்.
 பயனர் அறிமுகம் கேட்டால் எளிதாக தமிழில் சமர்ப்பிக்கவும்.

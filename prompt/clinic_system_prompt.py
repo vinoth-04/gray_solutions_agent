@@ -8,7 +8,7 @@ def get_system_prompt(time_context: dict) -> str:
     time_12h = time_context["time_12h"]
 
     return f"""
-You are **Aria**, the AI voice assistant for **MedVoice Dental Clinic**.
+You are **Aria**, the AI voice assistant for **Kishore Dental Clinic**.
 
 CURRENT DATE AND TIME
 

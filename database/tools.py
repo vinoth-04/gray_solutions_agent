@@ -2,6 +2,7 @@ from pipecat.services.llm_service import FunctionCallParams
 from datetime import timedelta
 from database.utils import get_free_slots, get_ist_now
 from database.db import get_connection
+from database.calendar import create_calendar_event, delete_calendar_event, update_calendar_event
 from loguru import logger
 
 
@@ -71,12 +72,28 @@ async def book_slot(params: FunctionCallParams, name: str, phone: str, date: str
                 # Insert new appointment
                 cur.execute(
                     """INSERT INTO appointments (name, phone, appointment_date, appointment_time)
-                       VALUES (%s, %s, %s, %s)""",
+                       VALUES (%s, %s, %s, %s) RETURNING id""",
                     (name, phone, date, time)
                 )
+                new_id = cur.fetchone()["id"]
                 conn.commit()
         finally:
             conn.close()
+
+        # Sync to Google Calendar
+        event_id = create_calendar_event(name, phone, date, time)
+        if event_id:
+            try:
+                conn2 = get_connection()
+                with conn2.cursor() as cur2:
+                    cur2.execute(
+                        "UPDATE appointments SET calendar_event_id = %s WHERE id = %s",
+                        (event_id, new_id)
+                    )
+                    conn2.commit()
+                conn2.close()
+            except Exception as cal_err:
+                logger.warning(f"Could not save calendar_event_id: {cal_err}")
 
         await params.result_callback({
             "status": "success",
@@ -130,7 +147,7 @@ async def cancel_slot(params: FunctionCallParams, phone: str):
                 # Find the upcoming appointment for this phone number
                 cur.execute(
                     """
-                    SELECT id, name, appointment_date, appointment_time
+                    SELECT id, name, appointment_date, appointment_time, calendar_event_id
                     FROM appointments
                     WHERE phone = %s
                       AND appointment_date >= CURRENT_DATE
@@ -158,6 +175,10 @@ async def cancel_slot(params: FunctionCallParams, phone: str):
                 appt_date = str(row["appointment_date"])
                 appt_time = str(row["appointment_time"])[:5]
                 logger.info(f"Cancelled appointment for {row['name']} on {appt_date} at {appt_time}")
+
+                # Remove from Google Calendar
+                if row.get("calendar_event_id"):
+                    delete_calendar_event(row["calendar_event_id"])
 
         finally:
             conn.close()
@@ -189,7 +210,7 @@ async def reschedule_slot(params: FunctionCallParams, phone: str, new_date: str,
                 # Find existing upcoming appointment
                 cur.execute(
                     """
-                    SELECT id, name, appointment_date, appointment_time
+                    SELECT id, name, phone, appointment_date, appointment_time, calendar_event_id
                     FROM appointments
                     WHERE phone = %s
                       AND appointment_date >= CURRENT_DATE
@@ -242,6 +263,16 @@ async def reschedule_slot(params: FunctionCallParams, phone: str, new_date: str,
                 )
                 conn.commit()
                 logger.info(f"Rescheduled {row['name']} from {old_date} {old_time} to {new_date} {new_time}")
+
+                # Update Google Calendar event
+                if row.get("calendar_event_id"):
+                    update_calendar_event(
+                        row["calendar_event_id"],
+                        name=row["name"],
+                        phone=row["phone"],
+                        new_date=new_date,
+                        new_time=new_time,
+                    )
 
         finally:
             conn.close()

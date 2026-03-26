@@ -22,7 +22,7 @@ from prompt.clinic_system_prompt import get_system_prompt
 from pipecat.adapters.schemas.tools_schema import ToolsSchema
 
 from database.time_utils import get_current_context 
-from database.tools import check_slot, book_slot, next_available_slot
+from database.tools import check_slot, book_slot, next_available_slot, reschedule_slot, cancel_slot
 
 load_dotenv()
 
@@ -44,15 +44,18 @@ async def run_bot(transport):
         standard_tools=[
             check_slot,
             book_slot,
-            next_available_slot
+            next_available_slot,
+            reschedule_slot,
+            cancel_slot,
         ]
     )
-    # time_context = get_current_context()
     llm.tools = tools_schema
 
     llm.register_direct_function(check_slot)
     llm.register_direct_function(book_slot)
     llm.register_direct_function(next_available_slot)
+    llm.register_direct_function(reschedule_slot)
+    llm.register_direct_function(cancel_slot)
         # ================= STT =================
     stt = DeepgramSTTService(
         api_key=os.getenv("DEEPGRAM_API_KEY"),

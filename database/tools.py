@@ -3,6 +3,8 @@ from datetime import timedelta
 from database.utils import get_free_slots, get_ist_now
 from database.db import get_connection
 from database.calendar import create_calendar_event, delete_calendar_event, update_calendar_event
+from pipeline.services.exotel_whatsapp import send_whatsapp_appointment_confirmation
+# from pipeline.services.exotel_call_transfer import transfer_call_to_human
 from loguru import logger
 
 
@@ -94,6 +96,17 @@ async def book_slot(params: FunctionCallParams, name: str, phone: str, date: str
                 conn2.close()
             except Exception as cal_err:
                 logger.warning(f"Could not save calendar_event_id: {cal_err}")
+
+        # Send WhatsApp confirmation to the patient
+        try:
+            send_whatsapp_appointment_confirmation(
+                to_phone=phone,
+                patient_name=name,
+                appointment_date=date,
+                appointment_time=time,
+            )
+        except Exception as wa_err:
+            logger.warning(f"WhatsApp notification failed (non-critical): {wa_err}")
 
         await params.result_callback({
             "status": "success",
@@ -287,3 +300,24 @@ async def reschedule_slot(params: FunctionCallParams, phone: str, new_date: str,
         await params.result_callback({
             "error": str(e)
         })
+
+
+async def transfer_to_human(params: FunctionCallParams):
+    """Transfer the call to a human agent. Call this ONLY when the user explicitly asks to speak with a human, a doctor, the clinic staff, or a real person."""
+    call_sid = getattr(params, "call_sid", None) or ""
+
+    # Acknowledge first so the caller hears something before the transfer
+    await params.result_callback({
+        "action": "transfer",
+        "message": (
+            "Sure! Please hold on while I connect you to our clinic staff. "
+            "One moment please."
+        ),
+    })
+
+    # Trigger Exotel redirect (non-blocking best-effort)
+    success = transfer_call_to_human(call_sid)
+    if not success:
+        logger.warning(
+            "⚠️  Human transfer API call failed – caller will stay with bot."
+        )

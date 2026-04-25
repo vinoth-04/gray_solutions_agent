@@ -3,8 +3,8 @@ from datetime import timedelta
 from database.utils import get_free_slots, get_ist_now
 from database.db import get_connection
 from database.calendar import create_calendar_event, delete_calendar_event, update_calendar_event
-from pipeline.services.exotel_whatsapp import send_whatsapp_appointment_confirmation
-# from pipeline.services.exotel_call_transfer import transfer_call_to_human
+# from pipeline.services.exotel_whatsapp import send_whatsapp_appointment_confirmation
+from pipeline.services.exotel_call_transfer import transfer_call_to_human
 from loguru import logger
 
 

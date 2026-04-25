@@ -15,6 +15,7 @@ from database.db import get_connection
 # ── API routers ──────────────────────────────────────────────────────────────
 from api.dashboard import router as dashboard_router
 from api.appointments import router as appointments_router
+from api.logs import router as logs_router
 
 app = FastAPI(
     title="Exotel Voicebot API",
@@ -25,6 +26,13 @@ app = FastAPI(
 # Register routers
 app.include_router(dashboard_router)
 app.include_router(appointments_router)
+app.include_router(logs_router)
+
+
+@app.get("/health", tags=["System"])
+def health_check():
+    return {"status": "ok", "version": "1.0.0"}
+
 
 
 # Legacy /appointments endpoint removed.

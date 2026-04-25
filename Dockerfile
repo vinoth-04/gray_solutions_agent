@@ -1,39 +1,46 @@
-# Use a Python image with uv pre-installed
-FROM ghcr.io/astral-sh/uv:python3.11-bookworm-slim AS builder
+# --- Stage 1: Frontend Builder ---
+FROM node:20-slim AS frontend-builder
+WORKDIR /app/frontend
+COPY frontend/package*.json ./
+RUN npm install
+COPY frontend/ .
+RUN npm run build
 
-# Install the project into `/app`
+# --- Stage 2: Backend Builder ---
+FROM ghcr.io/astral-sh/uv:python3.11-bookworm-slim AS backend-builder
 WORKDIR /app
-
-# Enable bytecode compilation
 ENV UV_COMPILE_BYTECODE=1
-
-# Copy from the cache instead of linking since it's a separate volume
 ENV UV_LINK_MODE=copy
+ENV UV_HTTP_TIMEOUT=1000
+COPY uv.lock pyproject.toml ./
+RUN uv sync --no-install-project --no-dev
+COPY . .
+RUN uv sync --no-dev
 
-# Increase the timeout for downloads (default is 30s)
-ENV UV_HTTP_TIMEOUT=300
-
-# Install the project's dependencies using the lockfile and pyproject.toml
-RUN --mount=type=cache,target=/root/.cache/uv \
-    --mount=type=bind,source=uv.lock,target=uv.lock \
-    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    uv sync --frozen --no-install-project --no-dev
-
-# Then, copy the rest of the application code and install the project
-ADD . /app
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-dev
-
-# Final runtime stage
+# --- Stage 3: Final Runtime ---
 FROM python:3.11-slim-bookworm
 
+# Install Nginx
+RUN apt-get update && apt-get install -y nginx && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
-# Copy the environment from the builder stage
-COPY --from=builder /app /app
-
-# Place executable scripts in the PATH
+# Copy Backend environment and code
+COPY --from=backend-builder /app /app
 ENV PATH="/app/.venv/bin:$PATH"
 
-# Run the application
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+# Copy Frontend dist files
+COPY --from=frontend-builder /app/frontend/dist /app/frontend/dist
+
+# Configure Nginx
+COPY nginx/default.conf /etc/nginx/sites-available/default
+RUN ln -sf /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default
+
+# Create a startup script to run both Nginx and Uvicorn
+RUN echo '#!/bin/bash\n\
+nginx & \n\
+uvicorn inbound.main:app --host 0.0.0.0 --port 5000\n\
+' > /app/start-app.sh && chmod +x /app/start-app.sh
+
+
+

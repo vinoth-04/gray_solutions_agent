@@ -56,7 +56,8 @@ export const getAppointments = async (pageSize = 50, page = 1) => {
 export const updateAppointmentStatus = (id, status) => 
   api.patch(`/appointments/${id}`, { status });
 
-export const getConfig = () => api.get('/dashboard/config');
+export const getAppointmentDetails = (id) => api.get(`/appointments/${id}`);
+
 export const getHealth = () => api.get('/health');
 
 /**
@@ -70,3 +71,14 @@ export const getCallLogs = (page = 1, status = null) => {
 
 // For the Escalations page
 export const getEscalations = () => getCallLogs(1, 'failed');
+
+/**
+ * Trigger an outbound call.
+ * Uses the Outbound Service /start endpoint.
+ */
+export const startOutboundCall = (phoneNumber) => 
+  api.post('/start', {
+    dialout_settings: {
+      phone_number: phoneNumber
+    }
+  });

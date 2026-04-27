@@ -1,24 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Settings as SettingsIcon, Bot, Bell, Plug, Loader2 } from 'lucide-react';
-import { getConfig } from '../../api';
-
 const Settings = () => {
-  const [config, setConfig] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchConfig = async () => {
-      try {
-        const data = await getConfig();
-        setConfig(data);
-      } catch (error) {
-        console.error('Failed to fetch settings', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchConfig();
-  }, []);
+  const [config, setConfig] = useState({
+    clinic_name: "Chennai Dental Care",
+    llm_model: "gpt-4o-mini",
+    languages: ["English", "Tamil"]
+  });
+  const [loading, setLoading] = useState(false);
 
   if (loading) {
     return (

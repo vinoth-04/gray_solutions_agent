@@ -9,7 +9,6 @@ import {
   Settings 
 } from 'lucide-react';
 import { useAuth } from '../../components/AuthContext';
-import { getConfig } from '../../api';
 
 const NAV_ITEMS = [
   { id: 'Home', path: '/', icon: Home },
@@ -19,23 +18,12 @@ const NAV_ITEMS = [
   { id: 'Patient History', path: '/patients', icon: UserSquare2 },
   { id: 'Settings', path: '/settings', icon: Settings },
 ];
-
 const VendorLayout = () => {
   const navigate = useNavigate();
   const { logout } = useAuth();
-  const [config, setConfig] = useState(null);
-
-  useEffect(() => {
-    const fetchConfig = async () => {
-      try {
-        const data = await getConfig();
-        setConfig(data);
-      } catch (err) {
-        console.error('Failed to load clinic config', err);
-      }
-    };
-    fetchConfig();
-  }, []);
+  const [config] = useState({
+    clinic_name: "Chennai Dental Care"
+  });
 
   const handleLogout = () => {
     logout();

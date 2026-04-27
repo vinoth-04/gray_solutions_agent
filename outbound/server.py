@@ -18,13 +18,18 @@ async def make_exotel_call(session: aiohttp.ClientSession, to_number: str, from_
     """Make an outbound call using Exotel's Connect API."""
     api_key = os.getenv("EXOTEL_API_KEY")
     api_token = os.getenv("EXOTEL_API_TOKEN")
-    sid = os.getenv("EXOTEL_SID")
+    # Support both EXOTEL_ACCOUNT_SID and legacy EXOTEL_SID
+    sid = os.getenv("EXOTEL_ACCOUNT_SID") or os.getenv("EXOTEL_SID")
+    subdomain = os.getenv("EXOTEL_SUBDOMAIN", "api.in.exotel.com")
 
     if not all([api_key, api_token, sid]):
-        raise ValueError("Missing Exotel credentials: EXOTEL_API_KEY, EXOTEL_API_TOKEN, EXOTEL_SID")
+        raise ValueError(
+            "Missing Exotel credentials. Required in .env: "
+            "EXOTEL_API_KEY, EXOTEL_API_TOKEN, EXOTEL_ACCOUNT_SID"
+        )
 
-    # Exotel Connect API endpoint
-    url = f"https://api.exotel.com/v1/Accounts/{sid}/Calls/connect"
+    # Exotel Connect API endpoint (uses regional subdomain)
+    url = f"https://{subdomain}/v1/Accounts/{sid}/Calls/connect"
 
     # Use form data for Exotel Connect Two Numbers API
     data = {
@@ -107,7 +112,8 @@ async def initiate_outbound_call(request: Request) -> JSONResponse:
             call_result = await make_exotel_call(
                 session=request.app.state.session,
                 to_number=phone_number,
-                from_number=os.getenv("EXOTEL_PHONE_NUMBER"),
+                # EXOTEL_PHONE_NUMBER is your ExoPhone (e.g. 0XXXXXXXXXX)
+                from_number=os.getenv("EXOTEL_PHONE_NUMBER") or os.getenv("EXOTEL_WHATSAPP_NUMBER"),
             )
 
             # Extract call SID from Exotel response

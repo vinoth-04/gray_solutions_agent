@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Loader2 } from 'lucide-react';
-import { getAppointments, updateAppointmentStatus } from '../../api';
+import { Loader2, Phone } from 'lucide-react';
+import { getAppointments, updateAppointmentStatus, startOutboundCall } from '../../api';
 
 const StatusBadge = ({ status }) => {
   let styles = '';
@@ -16,6 +16,7 @@ const Appointments = () => {
   const [activeTab, setActiveTab] = useState('Today');
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [callingId, setCallingId] = useState(null);
 
   useEffect(() => {
     const fetchAppointments = async () => {
@@ -31,6 +32,18 @@ const Appointments = () => {
     };
     fetchAppointments();
   }, []);
+
+  const handleCallNow = async (id, phone) => {
+    try {
+      setCallingId(id);
+      await startOutboundCall(phone);
+      alert(`Outbound call triggered for ${phone}`);
+    } catch (err) {
+      alert('Failed to trigger outbound call: ' + err.message);
+    } finally {
+      setCallingId(null);
+    }
+  };
 
   const today = new Date().toISOString().split('T')[0];
   
@@ -79,6 +92,7 @@ const Appointments = () => {
                   <th className="w-1/6">Time</th>
                   <th className="w-1/4">Contact Number</th>
                   <th className="w-1/6">Status</th>
+                  <th className="w-1/6 text-right pr-8">Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -109,6 +123,20 @@ const Appointments = () => {
                         <option value="cancelled">Cancelled</option>
                         <option value="no-show">No Show</option>
                       </select>
+                    </td>
+                    <td className="text-right pr-8">
+                       <button 
+                         onClick={() => handleCallNow(apt.id, apt.phone)}
+                         disabled={callingId === apt.id}
+                         className="inline-flex items-center gap-2 px-3 py-1.5 bg-gray-900 text-white rounded-lg text-[11px] font-bold hover:bg-gray-800 disabled:opacity-50 transition-colors"
+                       >
+                         {callingId === apt.id ? (
+                           <Loader2 size={12} className="animate-spin" />
+                         ) : (
+                           <Phone size={12} fill="currentColor" />
+                         )}
+                         Call Now
+                       </button>
                     </td>
                   </tr>
                 ))}

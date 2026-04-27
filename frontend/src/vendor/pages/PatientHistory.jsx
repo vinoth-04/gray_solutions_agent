@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Search, Calendar, ChevronDown, ChevronUp, Clock, User, ClipboardList, CheckCircle } from 'lucide-react';
+import { Search, Calendar, ChevronDown, ChevronUp, Clock, User, ClipboardList, CheckCircle, Phone, Loader2 } from 'lucide-react';
+import { startOutboundCall } from '../../api';
 
 const PATIENTS = [
   { 
@@ -42,9 +43,22 @@ const Tag = ({ text }) => (
 
 const PatientHistory = () => {
   const [expandedId, setExpandedId] = useState(null);
+  const [callingId, setCallingId] = useState(null);
 
   const toggleExpand = (id) => {
     setExpandedId(expandedId === id ? null : id);
+  };
+
+  const handleCallNow = async (id, phone) => {
+    try {
+      setCallingId(id);
+      await startOutboundCall(phone);
+      alert(`Outbound call triggered for ${phone}`);
+    } catch (err) {
+      alert('Failed to trigger outbound call: ' + err.message);
+    } finally {
+      setCallingId(null);
+    }
   };
 
   return (
@@ -102,23 +116,26 @@ const PatientHistory = () => {
             <table className="w-full">
                <thead>
                   <tr className="bg-white">
-                     <th className="pl-6 w-1/4">Patient Name</th>
+                     <th className="pl-6 w-10"></th>
+                     <th>Patient Name</th>
                      <th>Phone Number</th>
                      <th>Last Visit</th>
                      <th>Total Visits</th>
                      <th className="w-1/4">Treatment Types</th>
                      <th>Status</th>
-                     <th className="pr-6 w-10"></th>
+                     <th className="pr-6 text-right">Action</th>
                   </tr>
                </thead>
                <tbody className="text-sm">
                  {PATIENTS.map(patient => (
                    <React.Fragment key={patient.id}>
                      <tr 
-                        onClick={() => toggleExpand(patient.id)}
-                        className={`border-b border-gray-50 last:border-0 hover:bg-gray-50/50 cursor-pointer transition-colors ${expandedId === patient.id ? 'bg-gray-50/30' : ''}`}
+                        className={`border-b border-gray-50 last:border-0 hover:bg-gray-50/50 transition-colors ${expandedId === patient.id ? 'bg-gray-50/30' : ''}`}
                      >
-                        <td className="pl-6 py-4">
+                        <td className="pl-6 py-4 text-gray-400 cursor-pointer" onClick={() => toggleExpand(patient.id)}>
+                          {expandedId === patient.id ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                        </td>
+                        <td className="py-4">
                            <div className="flex items-center gap-3">
                               <div className="w-8 h-8 rounded-full bg-gray-200 text-gray-600 flex items-center justify-center text-[11px] font-bold shrink-0 shadow-inner">
                                  {patient.initials}
@@ -126,7 +143,7 @@ const PatientHistory = () => {
                               <span className="font-bold text-gray-900">{patient.name}</span>
                            </div>
                         </td>
-                        <td className="text-gray-600">{patient.phone}</td>
+                        <td className="text-gray-600 font-medium">{patient.phone}</td>
                         <td className="text-gray-600">{patient.lastVisit}</td>
                         <td>
                            <span className="px-2.5 py-1 bg-gray-100 text-gray-900 text-[11px] font-bold rounded-full">{patient.visits} visits</span>
@@ -137,8 +154,19 @@ const PatientHistory = () => {
                            </div>
                         </td>
                         <td><StatusBadge status={patient.status} /></td>
-                        <td className="pr-6 text-gray-400">
-                          {expandedId === patient.id ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                        <td className="pr-6 text-right">
+                           <button 
+                             onClick={() => handleCallNow(patient.id, patient.phone)}
+                             disabled={callingId === patient.id}
+                             className="inline-flex items-center gap-2 px-3 py-1.5 bg-gray-900 text-white rounded-lg text-[11px] font-bold hover:bg-gray-800 disabled:opacity-50 transition-colors"
+                           >
+                             {callingId === patient.id ? (
+                               <Loader2 size={12} className="animate-spin" />
+                             ) : (
+                               <Phone size={12} fill="currentColor" />
+                             )}
+                             Call Now
+                           </button>
                         </td>
                      </tr>
                      {expandedId === patient.id && (

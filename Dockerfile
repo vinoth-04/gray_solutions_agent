@@ -39,6 +39,7 @@ RUN ln -sf /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default
 # Create a startup script to run both Nginx and Uvicorn
 RUN echo '#!/bin/bash\n\
 nginx & \n\
+uvicorn outbound.server:app --host 0.0.0.0 --port 7860 & \n\
 uvicorn inbound.main:app --host 0.0.0.0 --port 5000\n\
 ' > /app/start-app.sh && chmod +x /app/start-app.sh
 CMD ["/app/start-app.sh"]

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../components/AuthContext';
 import Login from '../components/Login';
 import AdminLayout from './components/AdminLayout';
@@ -16,9 +16,18 @@ import Settings from './pages/Settings';
 
 const AdminApp = () => {
   const { isAuthenticated, user, login } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogin = async (email, password) => {
+    const loggedInUser = await login(email, password);
+    if (loggedInUser?.role !== 'admin') {
+      // Vendor tried to log in via /admin – redirect to vendor portal
+      navigate('/', { replace: true });
+    }
+  };
 
   if (!isAuthenticated) {
-    return <Login onLogin={(e, p) => login(e, p)} type="Admin" />;
+    return <Login onLogin={handleLogin} type="Admin" />;
   }
 
   // Role Guard: Prevents Vendors from accessing the Admin portal

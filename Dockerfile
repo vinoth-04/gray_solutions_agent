@@ -41,6 +41,4 @@ RUN echo '#!/bin/bash\n\
 nginx & \n\
 uvicorn inbound.main:app --host 0.0.0.0 --port 5000\n\
 ' > /app/start-app.sh && chmod +x /app/start-app.sh
-
-
-
+CMD ["/app/start-app.sh"]

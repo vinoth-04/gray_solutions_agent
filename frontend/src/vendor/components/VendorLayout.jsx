@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { 
   Home, 
@@ -18,12 +18,9 @@ const NAV_ITEMS = [
   { id: 'Patient History', path: '/patients', icon: UserSquare2 },
   { id: 'Settings', path: '/settings', icon: Settings },
 ];
+
 const VendorLayout = () => {
-  const navigate = useNavigate();
-  const { logout } = useAuth();
-  const [config] = useState({
-    clinic_name: "Chennai Dental Care"
-  });
+  const { logout, user } = useAuth();
 
   const handleLogout = () => {
     logout();
@@ -68,13 +65,14 @@ const VendorLayout = () => {
         {/* Header */}
         <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-8 flex-shrink-0">
           <div className="flex-1"></div>
-          <div className="font-bold text-gray-900 text-[15px] animate-in fade-in duration-700">
-            {config?.clinic_name || 'Loading Clinic...'}
+          <div className="font-bold text-gray-900 text-[15px]">
+            Chennai Dental Care
           </div>
-          <div className="flex-1 flex justify-end">
-             <button onClick={handleLogout} className="text-sm font-medium text-gray-600 hover:text-gray-900 flex items-center gap-2">
-               <span className="text-gray-400">&rarr;</span> Logout
-             </button>
+          <div className="flex-1 flex justify-end items-center gap-4">
+            <span className="text-sm text-gray-500">{user?.name || user?.email}</span>
+            <button onClick={handleLogout} className="text-sm font-medium text-gray-600 hover:text-gray-900 flex items-center gap-2">
+              <span className="text-gray-400">&rarr;</span> Logout
+            </button>
           </div>
         </header>
 
@@ -90,4 +88,3 @@ const VendorLayout = () => {
 };
 
 export default VendorLayout;
-

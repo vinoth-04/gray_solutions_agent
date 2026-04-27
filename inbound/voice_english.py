@@ -52,7 +52,7 @@ STT_LANGUAGE    = "en-IN"
 TTS_MODEL       = "bulbul:v3-beta"
 TTS_VOICE       = "shubh"
 TTS_PACE        = 1.1
-TTS_TEMPERATURE = 0.0   # deterministic = faster & consistent
+TTS_TEMPERATURE = 0.01  # minimum allowed by Sarvam — near-deterministic & fast
 
 
 async def run_bot(transport, call_sid: str = ""):

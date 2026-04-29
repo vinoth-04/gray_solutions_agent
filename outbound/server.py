@@ -18,7 +18,7 @@ async def make_exotel_call(session: aiohttp.ClientSession, to_number: str, from_
     """Make an outbound call using Exotel's Connect API."""
     api_key = os.getenv("EXOTEL_API_KEY")
     api_token = os.getenv("EXOTEL_API_TOKEN")
-    sid = os.getenv("EXOTEL_SID")
+    sid = os.getenv("EXOTEL_ACCOUNT_SID")
 
     if not all([api_key, api_token, sid]):
         raise ValueError("Missing Exotel credentials: EXOTEL_API_KEY, EXOTEL_API_TOKEN, EXOTEL_SID")

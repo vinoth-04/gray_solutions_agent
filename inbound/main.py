@@ -1,5 +1,5 @@
-from fastapi import FastAPI, WebSocket
-from fastapi.responses import JSONResponse
+import os
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from loguru import logger
 
 from pipecat.runner.utils import parse_telephony_websocket
@@ -10,13 +10,25 @@ from pipeline.transports.fastapi import (
 )
 
 from inbound.voice_english import run_bot
-from database.db import get_connection
 
 # ── API routers ──────────────────────────────────────────────────────────────
 from api.dashboard import router as dashboard_router
 from api.appointments import router as appointments_router
 from api.logs import router as logs_router
 from api.login import router as login_router
+
+# ── Validate required env vars at startup ────────────────────────────────────
+REQUIRED_ENV_VARS = [
+    "OPENAI_API_KEY",
+    "DEEPGRAM_API_KEY",
+    "SARVAM_API_KEY",
+]
+
+missing = [v for v in REQUIRED_ENV_VARS if not os.getenv(v)]
+if missing:
+    raise EnvironmentError(
+        f"Missing required environment variables: {', '.join(missing)}"
+    )
 
 app = FastAPI(
     title="Exotel Voicebot API",
@@ -37,37 +49,55 @@ def health_check():
 
 
 
-# Legacy /appointments endpoint removed.
-# Use GET /api/appointments  (see api/appointments.py)
+@app.get("/health")
+async def health_check():
+    """Liveness probe — used by load balancers and monitoring."""
+    return {"status": "ok"}
 
 
 @app.websocket("/ws")
 async def exotel_websocket(websocket: WebSocket):
 
     await websocket.accept()
-    logger.info("🚀 Exotel Connected")
+    logger.info("🚀 Exotel WebSocket connected")
 
-    # Detect Exotel transport
-    transport_type, call_data = await parse_telephony_websocket(websocket)
+    try:
+        # ── Detect transport type + parse call metadata ───────────────────
+        transport_type, call_data = await parse_telephony_websocket(websocket)
+        logger.info(f"Transport detected: {transport_type} | call_data: {call_data}")
 
-    logger.info(f"Transport detected: {transport_type}")
+        call_sid   = call_data.get("call_id", "")
+        stream_sid = call_data.get("stream_id", "")
 
-    # Exotel serializer
-    serializer = ExotelFrameSerializer(
-        stream_sid=call_data["stream_id"],
-        call_sid=call_data["call_id"],
-    )
+        if not call_sid:
+            logger.warning("⚠️  call_sid is empty — human transfer will not work")
 
-    # Create Pipecat transport
-    transport = FastAPIWebsocketTransport(
-        websocket=websocket,
-        params=FastAPIWebsocketParams(
-            audio_in_enabled=True,
-            audio_out_enabled=True,
-            add_wav_header=False,
-            serializer=serializer,
-        ),
-    )
+        # ── Exotel serializer ─────────────────────────────────────────────
+        serializer = ExotelFrameSerializer(
+            stream_sid=stream_sid,
+            call_sid=call_sid,
+        )
 
-    # Start voicebot
-    await run_bot(transport)
+        # ── Pipecat transport ─────────────────────────────────────────────
+        transport = FastAPIWebsocketTransport(
+            websocket=websocket,
+            params=FastAPIWebsocketParams(
+                audio_in_enabled=True,
+                audio_out_enabled=True,
+                add_wav_header=False,
+                serializer=serializer,
+            ),
+        )
+
+        # ── Start voicebot (call_sid now correctly forwarded) ─────────────
+        await run_bot(transport, call_sid=call_sid)
+
+    except WebSocketDisconnect:
+        logger.info("📴 WebSocket disconnected cleanly")
+
+    except Exception as exc:
+        logger.exception(f"❌ Unhandled error in WebSocket handler: {exc}")
+        try:
+            await websocket.close(code=1011)  # Internal error
+        except Exception:
+            pass  # Already closed
